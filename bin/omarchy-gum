@@ -1,0 +1,61 @@
+#!/bin/bash
+# Stand-in for the subset of `gum` Omarchy's plugin scripts use. Uses the real
+# gum when it is installed; otherwise plain read/select prompts.
+#   omarchy-gum confirm <prompt>
+#   omarchy-gum choose --header=<text> [--selected <value>] <item>...   (items also read from stdin)
+#   omarchy-gum input --prompt <text>
+set -uo pipefail
+if command -v gum >/dev/null 2>&1; then
+  exec gum "$@"
+fi
+cmd="${1:-}"; shift || true
+case "$cmd" in
+confirm)
+  prompt="${1:-Continue?}"
+  read -r -p "$prompt [y/N] " answer </dev/tty
+  [[ $answer =~ ^[Yy]([Ee][Ss])?$ ]]
+  ;;
+choose)
+  header=""; selected=""; items=()
+  while (( $# > 0 )); do
+    case "$1" in
+      --header=*) header="${1#--header=}"; shift ;;
+      --header) header="${2:-}"; shift 2 ;;
+      --selected) selected="${2:-}"; shift 2 ;;
+      --selected=*) selected="${1#--selected=}"; shift ;;
+      *) items+=("$1"); shift ;;
+    esac
+  done
+  if (( ${#items[@]} == 0 )) && [[ ! -t 0 ]]; then
+    while IFS= read -r line; do [[ -n $line ]] && items+=("$line"); done
+  fi
+  (( ${#items[@]} > 0 )) || exit 1
+  [[ -n $header ]] && echo "$header" >&2
+  i=1
+  for item in "${items[@]}"; do
+    marker=" "; [[ $item == "$selected" ]] && marker="*"
+    printf '%s %2d) %s\n' "$marker" "$i" "$item" >&2
+    i=$((i + 1))
+  done
+  read -r -p "Choice: " choice </dev/tty
+  if [[ -z $choice && -n $selected ]]; then echo "$selected"; exit 0; fi
+  [[ $choice =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#items[@]} )) || exit 1
+  echo "${items[$((choice - 1))]}"
+  ;;
+input)
+  prompt=""
+  while (( $# > 0 )); do
+    case "$1" in
+      --prompt) prompt="${2:-}"; shift 2 ;;
+      --prompt=*) prompt="${1#--prompt=}"; shift ;;
+      *) shift ;;
+    esac
+  done
+  read -r -p "$prompt" value </dev/tty
+  echo "$value"
+  ;;
+*)
+  echo "omarchy-gum: unsupported command: $cmd (install gum for the full experience)" >&2
+  exit 1
+  ;;
+esac

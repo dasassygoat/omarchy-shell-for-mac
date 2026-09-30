@@ -175,6 +175,149 @@ ShellRoot {
   }
   property string lastWrittenText: ""
 
+  // ------------------------------------------------ enable / disable / move
+  // Port of upstream services/PluginRegistry.qml setEnabled/moveBarEntry
+  // without the clone bookkeeping (omarchy plugin clone is not vendored).
+
+  property string lastEnableError: ""
+
+  function ensureConfigShape(config) {
+    if (!Util.isPlainObject(config.bar)) config.bar = {}
+    if (!Util.isPlainObject(config.bar.layout)) config.bar.layout = {}
+    var sections = ["left", "center", "right"]
+    for (var i = 0; i < sections.length; i++)
+      if (!Array.isArray(config.bar.layout[sections[i]])) config.bar.layout[sections[i]] = []
+    if (!Array.isArray(config.plugins)) config.plugins = []
+    if (!Array.isArray(config.disabledPlugins)) config.disabledPlugins = []
+  }
+
+  function barEntryId(entry) {
+    return Util.canonicalWidgetId(String(Util.isPlainObject(entry) ? entry.id : entry || ""))
+  }
+
+  function findBarLocation(config, id, section) {
+    var key = Util.canonicalWidgetId(String(id))
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      if (section && sections[s] !== section) continue
+      var entries = config.bar.layout[sections[s]]
+      for (var i = 0; i < entries.length; i++)
+        if (barEntryId(entries[i]) === key) return { found: true, kind: "bar", section: sections[s], index: i }
+    }
+    return { found: false }
+  }
+
+  function findEntryLocation(config, id) {
+    var key = Util.canonicalWidgetId(String(id))
+    var barLocation = findBarLocation(config, key, "")
+    if (barLocation.found) return barLocation
+    for (var j = 0; j < config.plugins.length; j++) {
+      var entry = config.plugins[j]
+      if ((typeof entry === "string" ? entry : entry && entry.id) === key) return { found: true, kind: "plugin", index: j }
+    }
+    return { found: false }
+  }
+
+  function defaultBarWidgetSection(manifest) {
+    var metadata = manifest && Util.isPlainObject(manifest.barWidget) ? manifest.barWidget : null
+    var section = metadata ? String(metadata.defaultSection || "") : ""
+    return ["left", "center", "right"].indexOf(section) !== -1 ? section : "center"
+  }
+
+  function barTarget(config, placement, fallbackSection) {
+    var target = placement || {}
+    var section = ["left", "center", "right"].indexOf(String(target.section || "")) !== -1
+      ? String(target.section) : fallbackSection
+    var relativeId = String(target.before || target.after || "")
+    if (relativeId) {
+      var relative = findBarLocation(config, relativeId, section && target.section ? section : "")
+      if (!relative.found) return { error: "could not find target widget " + relativeId }
+      return { section: relative.section, index: relative.index + (target.after ? 1 : 0) }
+    }
+    if (target.index !== undefined && target.index !== null) {
+      var requested = Math.max(0, Math.floor(Number(target.index)))
+      return { section: section, index: Math.min(requested, config.bar.layout[section].length) }
+    }
+    var anchors = { left: "omarchy.workspaces", center: "omarchy.weather", right: "omarchy.tray" }
+    var anchor = findBarLocation(config, anchors[section], section)
+    return { section: section, index: anchor.found ? anchor.index + 1 : config.bar.layout[section].length }
+  }
+
+  function moveBarEntry(config, id, placement) {
+    var key = Util.canonicalWidgetId(String(id))
+    var source = findBarLocation(config, key, String(placement.fromSection || ""))
+    if (!source.found) return "could not find widget " + key
+    var entry = config.bar.layout[source.section][source.index]
+    config.bar.layout[source.section].splice(source.index, 1)
+    var target = barTarget(config, placement, source.section)
+    if (target.error) {
+      config.bar.layout[source.section].splice(source.index, 0, entry)
+      return target.error
+    }
+    config.bar.layout[target.section].splice(target.index, 0, entry)
+    return ""
+  }
+
+  function setEnabled(id, value, placement) {
+    var key = Util.canonicalWidgetId(String(id))
+    lastEnableError = ""
+    var manifest = installedPlugins[key]
+    if (!manifest) {
+      if (value) { lastEnableError = "unknown"; return false }
+    }
+    var kinds = manifest && Array.isArray(manifest.kinds) ? manifest.kinds : []
+    if (kinds.indexOf("bar") !== -1) {
+      lastEnableError = "bar plugins (full bar replacements) are not supported by the mac host yet"
+      return false
+    }
+    var isBarWidget = kinds.indexOf("bar-widget") !== -1
+    var isFirstParty = !!(manifest && manifest.__isFirstParty)
+    var config = JSON.parse(JSON.stringify(shellConfig || builtinShellConfig))
+    ensureConfigShape(config)
+
+    if (value && placement && (placement.before || placement.after)) {
+      var relativeId = String(placement.before || placement.after)
+      if (!findBarLocation(config, relativeId, String(placement.section || "")).found) {
+        lastEnableError = "could not find target widget " + relativeId
+        return false
+      }
+    }
+
+    var location = findEntryLocation(config, key)
+    if (value) {
+      config.disabledPlugins = config.disabledPlugins.filter(function(d) { return d !== key })
+      var entry = { id: key }
+      var insertedWithPlacement = false
+      if (!location.found && isBarWidget) {
+        var target = barTarget(config, placement || {}, defaultBarWidgetSection(manifest))
+        if (target.error) { lastEnableError = target.error; return false }
+        config.bar.layout[target.section].splice(target.index, 0, entry)
+        insertedWithPlacement = true
+      } else if (!location.found && !isFirstParty) {
+        config.plugins.push(entry)
+      }
+      if (isBarWidget && !insertedWithPlacement && placement && Object.keys(placement).length) {
+        var moveError = moveBarEntry(config, key, placement)
+        if (moveError) { lastEnableError = moveError; return false }
+      }
+    } else {
+      if (location.kind === "bar") config.bar.layout[location.section].splice(location.index, 1)
+      else if (location.kind === "plugin") config.plugins.splice(location.index, 1)
+      if (isFirstParty && !isBarWidget && config.disabledPlugins.indexOf(key) === -1) config.disabledPlugins.push(key)
+    }
+    persistShellConfig(config)
+    return true
+  }
+
+  function moveBarWidget(id, placement) {
+    var config = JSON.parse(JSON.stringify(shellConfig || builtinShellConfig))
+    ensureConfigShape(config)
+    var error = moveBarEntry(config, id, placement || {})
+    if (error) return error
+    persistShellConfig(config)
+    return ""
+  }
+
   // Verbatim contract from upstream shell.qml: a widget hands back its whole
   // inline layout entry and the shell rewrites just that entry.
   function updateEntryInline(moduleName, settings) {
@@ -490,6 +633,31 @@ ShellRoot {
     function hide(id: string): void { shell.hide(id) }
     function toggle(id: string, payloadJson: string): void { shell.toggle(id, payloadJson) }
     function isOpen(id: string): string { return shell.isPluginOpen(id) ? "open" : "closed" }
+    function setPluginEnabled(id: string, enabled: string): string {
+      return shell.setEnabled(id, String(enabled) === "true", {}) ? "ok" : (shell.lastEnableError || "unknown")
+    }
+    function enablePlugin(id: string, placementJson: string): string {
+      try {
+        var placement = JSON.parse(placementJson || "{}")
+        return shell.setEnabled(id, true, placement) ? "ok" : (shell.lastEnableError || "unknown")
+      } catch (e) {
+        return "invalid placement: " + e
+      }
+    }
+    function moveBarWidget(id: string, placementJson: string): string {
+      try {
+        var error = shell.moveBarWidget(id, JSON.parse(placementJson || "{}"))
+        return error ? error : "ok"
+      } catch (e) {
+        return "invalid placement: " + e
+      }
+    }
+    function putBarWidget(id: string, placementJson: string): string {
+      var cfg = shell.shellConfig || shell.builtinShellConfig
+      shell.ensureConfigShape(cfg)
+      if (shell.findBarLocation(cfg, id, "").found) return "ok"
+      return enablePlugin(id, placementJson)
+    }
     function listServices(): string { return JSON.stringify(Object.keys(shell.services)) }
     function quit(): void { Qt.quit() }
     function nativeWindows(): string { return Host.windowsJson() }

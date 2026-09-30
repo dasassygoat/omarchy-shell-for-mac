@@ -53,6 +53,31 @@ macOS menu bar (macOS does not let a window cover the menu bar; set the menu
 bar to auto-hide if you want the bar at the very top). The host has no Dock
 icon.
 
+## Managing plugins
+
+Omarchy's own plugin CLI is vendored in `bin/` (patched only for bash 3.2,
+BSD `find`, and a `gum` stand-in; see `bin/PATCHES.md`). The shell must be
+running, as upstream requires:
+
+```bash
+bin/omarchy plugin add https://github.com/acme/omarchy-weather.git --enable
+bin/omarchy plugin list
+bin/omarchy plugin enable acme.weather --section right
+bin/omarchy plugin enable acme.weather --after omarchy.clock
+bin/omarchy plugin disable acme.weather
+bin/omarchy plugin update
+bin/omarchy plugin remove acme.weather
+bin/omarchy plugin validate ./my-plugin
+```
+
+`add` clones into `~/.config/omarchy/plugins/<id>/`, validates the manifest,
+never runs plugin code, and asks before enabling (pass `--yes` when scripting).
+`enable` places a bar widget in `shell.json` (default section from the
+manifest, or `--section`, `--index`, `--before`, `--after`), adds other kinds
+to `plugins[]`, and re-enables first-party plugins listed in
+`disabledPlugins[]`. `omarchy plugin clone` and the `bar` kind are not
+supported yet.
+
 Talk to it with the same command Omarchy scripts use:
 
 ```bash
@@ -98,8 +123,7 @@ Not implemented yet:
   `Quickshell.Networking`. These need macOS-backed implementations.
 - Hyprland workspaces / focused window (the `Hyprland` singleton is inert)
 - Multi-monitor bars, vertical bars, hot reload of plugin files
-- The `omarchy plugin add/enable/...` CLI (upstream's bash scripts are close to
-  portable; not vendored yet)
+- `omarchy plugin clone` (needs `rg`, GNU `sed -i` and clone bookkeeping)
 
 Anything that shells out to `hyprctl`, `pacman`, `wl-copy` and friends fails
 at the command, not in QML.

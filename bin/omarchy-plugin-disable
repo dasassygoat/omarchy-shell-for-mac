@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# omarchy-shell-mac: vendored from Omarchy (see bin/PATCHES.md). Runs with its
+# sibling scripts on PATH and OMARCHY_PATH pointing at this checkout.
+_OMARCHY_MAC_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="$_OMARCHY_MAC_BIN:$PATH"
+export OMARCHY_PATH="${OMARCHY_PATH:-$(cd "$_OMARCHY_MAC_BIN/.." && pwd)}"
+
+# omarchy:summary=Disable a shell plugin
+# omarchy:group=plugin
+# omarchy:args=<id>
+
+set -euo pipefail
+
+fail() {
+  echo "omarchy-plugin-disable: $*" >&2
+  exit 1
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  echo "Usage: omarchy plugin disable <id>"
+  exit 0
+fi
+
+id="${1:-}"
+[[ -n $id ]] || fail "plugin id is required"
+
+result=$(omarchy-shell shell setPluginEnabled "$id" false)
+[[ $result == "ok" ]] ||
+  fail "plugin '$id' is not known; run: omarchy-shell shell rescanPlugins"
+
+echo "Disabled $id"

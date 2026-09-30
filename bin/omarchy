@@ -1,0 +1,47 @@
+#!/bin/bash
+# Minimal `omarchy` dispatcher for the mac host: the plugin group and the
+# shell client. Upstream's omarchy command covers far more; only what this
+# host implements is routed here.
+set -euo pipefail
+BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="$BIN:$PATH"
+export OMARCHY_PATH="${OMARCHY_PATH:-$(cd "$BIN/.." && pwd)}"
+
+usage() {
+  cat <<USAGE
+Usage: omarchy <group> <command> [args...]
+
+Groups:
+  plugin   add | enable | disable | list | remove | update | validate | catalog
+           (aliases: install -> add, rm -> remove)
+  shell    <target> <method> [args...]    IPC call to the running shell
+  start                                    launch the shell host
+
+Examples:
+  omarchy plugin add https://github.com/acme/omarchy-weather.git --enable
+  omarchy plugin enable acme.weather --section right
+  omarchy plugin list
+  omarchy shell shell ping
+USAGE
+}
+
+group="${1:-}"; shift || true
+case "$group" in
+plugin)
+  cmd="${1:-}"; shift || true
+  case "$cmd" in
+    install) cmd=add ;;
+    rm) cmd=remove ;;
+    "" | -h | --help)
+      echo "Usage: omarchy plugin <add|enable|disable|list|remove|update|validate|catalog> [args...]"
+      exit 0 ;;
+  esac
+  script="$BIN/omarchy-plugin-$cmd"
+  [[ -x $script ]] || { echo "omarchy: unknown plugin command: $cmd" >&2; exit 1; }
+  exec "$script" "$@"
+  ;;
+shell) exec "$BIN/omarchy-shell" "$@" ;;
+start) exec "$BIN/omarchy-shell-mac" run "$@" ;;
+"" | -h | --help) usage; exit 0 ;;
+*) echo "omarchy: unknown group: $group (only 'plugin' and 'shell' exist on the mac host)" >&2; exit 1 ;;
+esac
