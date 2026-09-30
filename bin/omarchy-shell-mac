@@ -1,0 +1,13 @@
+#!/bin/bash
+# Launch the macOS Omarchy shell host (or forward an ipc call).
+#   omarchy-shell-mac            start the shell
+#   omarchy-shell-mac ipc ...    same as bin/omarchy-shell
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="$ROOT/.venv/bin/python"
+if [[ ! -x $PY ]]; then
+  echo "omarchy-shell-mac: no virtualenv at $ROOT/.venv — run: uv venv --python 3.13 .venv && uv pip install --python .venv/bin/python -r requirements.txt" >&2
+  exit 1
+fi
+cd "$ROOT"
+exec "$PY" -m host.main "$@"
