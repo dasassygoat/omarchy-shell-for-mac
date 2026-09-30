@@ -80,7 +80,12 @@ ShellRoot {
   function isEnabled(id) {
     var cfg = shellConfig || builtinShellConfig
     var m = installedPlugins[id]
-    if (m && m.__isFirstParty === true && !(Array.isArray(m.kinds) && m.kinds.indexOf("bar") !== -1)) {
+    var kinds = m && Array.isArray(m.kinds) ? m.kinds : []
+    var widgetOnly = kinds.length > 0 && kinds.every(function(k) { return k === "bar-widget" })
+    // First-party infrastructure (panels, overlays, menus, services) is on
+    // unless disabled; a first-party bar widget is on only while it is in
+    // the bar layout, like any other widget.
+    if (m && m.__isFirstParty === true && !widgetOnly && kinds.indexOf("bar") === -1) {
       var disabled = Array.isArray(cfg.disabledPlugins) ? cfg.disabledPlugins : []
       return disabled.indexOf(id) === -1
     }

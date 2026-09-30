@@ -7,16 +7,10 @@
   "bar": {
     "position": "top",
     "transparent": false,
-    "centerAnchor": "omarchy.clock",
+    "centerAnchor": "",
     "layout": {
       "left": [],
-      "center": [
-        {
-          "id": "omarchy.clock",
-          "format": "dddd HH:mm",
-          "formatAlt": "d MMMM 'W'ww yyyy"
-        }
-      ],
+      "center": [],
       "right": []
     }
   },
