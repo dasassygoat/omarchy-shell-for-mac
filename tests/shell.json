@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "mac": { "cornerRadius": 8, "gapsOut": 6 },
+  "bar": {
+    "position": "top",
+    "layout": {
+      "left": [],
+      "center": [ { "id": "omarchy.clock" } ],
+      "right": [ { "id": "mac.popupcard-probe" } ]
+    }
+  },
+  "plugins": [],
+  "disabledPlugins": []
+}

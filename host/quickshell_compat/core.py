@@ -359,3 +359,323 @@ class SystemClock(QObject):
     hours = Property(int, _hours, notify=dateChanged)
     minutes = Property(int, _minutes, notify=dateChanged)
     seconds = Property(int, _seconds, notify=dateChanged)
+
+
+# --------------------------------------------------------------------------- #
+# Enums used by PanelWindow / PopupWindow / Region
+# --------------------------------------------------------------------------- #
+
+from PySide6.QtCore import QPointF, QSizeF  # noqa: E402
+from PySide6.QtQml import QmlAttached, QmlUncreatable  # noqa: E402
+from PySide6.QtQuick import QQuickItem, QQuickWindow  # noqa: E402
+
+
+@QmlElement
+@QmlUncreatable("enum holder")
+class ExclusionMode(QObject):
+    @QEnum
+    class Enum(IntEnum):
+        Normal = 0
+        Ignore = 1
+        Auto = 2
+
+
+@QmlElement
+@QmlUncreatable("enum holder")
+class Edges(QObject):
+    Enum = QEnum(IntEnum("Enum", {"None": 0, "Top": 1, "Left": 2, "Right": 4, "Bottom": 8}))
+
+
+@QmlElement
+@QmlUncreatable("enum holder")
+class PopupAdjustment(QObject):
+    Enum = QEnum(IntEnum("Enum", {
+        "None": 0,
+        "SlideX": 1, "SlideY": 2, "Slide": 3,
+        "FlipX": 4, "FlipY": 8, "Flip": 12,
+        "ResizeX": 16, "ResizeY": 32, "Resize": 48,
+        "All": 63,
+    }))
+
+
+@QmlElement
+@QmlUncreatable("enum holder")
+class Intersection(QObject):
+    @QEnum
+    class Enum(IntEnum):
+        Combine = 0
+        Subtract = 1
+        Intersect = 2
+        Xor = 3
+
+
+@QmlElement
+@QmlUncreatable("enum holder")
+class RegionShape(QObject):
+    @QEnum
+    class Enum(IntEnum):
+        Rect = 0
+        Ellipse = 1
+
+
+# --------------------------------------------------------------------------- #
+# QsWindow: the window base PanelWindow / PopupWindow / FloatingWindow build on
+# --------------------------------------------------------------------------- #
+
+
+class QsWindowAttached(QObject):
+    """`Item.QsWindow.window` — the QsWindow (or any QQuickWindow) an item lives in."""
+
+    windowChanged = Signal()
+
+    def __init__(self, item):
+        super().__init__(item)
+        self._item = item if isinstance(item, QQuickItem) else None
+        if self._item is not None:
+            self._item.windowChanged.connect(self._onWindowChanged)
+
+    def _onWindowChanged(self, _window):
+        self.windowChanged.emit()
+
+    def _window(self):
+        return self._item.window() if self._item is not None else None
+
+    def _contentItem(self):
+        window = self._window()
+        if window is None:
+            return None
+        surface = getattr(window, "_surface", None)
+        return surface if surface is not None else window.contentItem()
+
+    def _mask(self):
+        window = self._window()
+        return getattr(window, "_mask", None) if window is not None else None
+
+    window = Property(QObject, _window, notify=windowChanged)
+    contentItem = Property(QObject, _contentItem, notify=windowChanged)
+    mask = Property(QObject, _mask, notify=windowChanged)
+
+
+@QmlElement
+@QmlAttached(QsWindowAttached)
+@ClassInfo(DefaultProperty="qsData")
+class QsWindow(QQuickWindow):
+    """A QQuickWindow with Quickshell's window surface.
+
+    Adds `screen` (a ShellScreen, not Qt's screen info), `implicitWidth` /
+    `implicitHeight`, `mask` and `backingWindowVisible`.
+
+    `contentItem` is not the QQuickWindow root but a full-size child of it,
+    and declared children are parented there. Qt 6.11 never re-shows a root
+    item once it has been hidden, and Omarchy's OverlayWindow toggles
+    `contentItem.visible` on every open; a plain child item has no such
+    problem and sits at the same origin, so coordinates are unchanged.
+    """
+
+    screenChanged = Signal()
+    implicitWidthChanged = Signal()
+    implicitHeightChanged = Signal()
+    maskChanged = Signal()
+    backingWindowVisibleChanged = Signal()
+
+    def __init__(self, parent=None):
+        QQuickWindow.__init__(self, parent)
+        self._screen = None
+        self._implicitWidth = 100.0
+        self._implicitHeight = 100.0
+        self._mask = None
+        self._data = []
+        self._syncCount = 0
+        self._surface = QQuickItem(QQuickWindow.contentItem(self))
+        self._surface.setObjectName("qsContentItem")
+        self._syncSurface()
+        self.widthChanged.connect(self._syncSurface)
+        self.heightChanged.connect(self._syncSurface)
+        self.visibilityChanged.connect(lambda _v: self.backingWindowVisibleChanged.emit())
+
+    def _syncSurface(self, *_):
+        self._syncCount += 1
+        self._surface.setWidth(float(max(1, self.width())))
+        self._surface.setHeight(float(max(1, self.height())))
+
+    def resizeEvent(self, event):
+        # Belt and braces next to the widthChanged/heightChanged connections.
+        QQuickWindow.resizeEvent(self, event)
+        self._syncSurface()
+
+    # ---- default property: children go onto the surface ---------------- #
+
+    def _appendData(self, obj):
+        if obj is None:
+            return
+        if isinstance(obj, QQuickItem):
+            obj.setParentItem(self._surface)
+        elif obj.parent() is None:
+            obj.setParent(self)
+        self._data.append(obj)
+
+    def _countData(self):
+        return len(self._data)
+
+    def _atData(self, index):
+        return self._data[index]
+
+    def _clearData(self):
+        self._data.clear()
+
+    # Named qsData rather than data: QQuickWindow already has a `data` list
+    # property and QML resolved the default property to the base class one.
+    qsData = ListProperty(QObject, _appendData, _countData, _atData, _clearData)
+
+    def _getSurface(self):
+        return self._surface
+
+    # Exposed as qsSurface; the QML window types re-export it as `contentItem`.
+    # A Python property named contentItem would compete with QQuickWindow's own
+    # C++ property of that name, and QML picked the root item.
+    qsSurface = Property(QObject, _getSurface, constant=True)
+
+    # ---- attached ---------------------------------------------------------- #
+
+    @staticmethod
+    def qmlAttachedProperties(self, obj):
+        return QsWindowAttached(obj)
+
+    # ---- invokables -------------------------------------------------------- #
+
+    @Slot(QObject, result="QVariant")
+    def itemPosition(self, item):
+        if not isinstance(item, QQuickItem):
+            return QPointF(0, 0)
+        return item.mapToItem(self._surface, QPointF(0, 0))
+
+    @Slot(QObject, float, float, result="QVariant")
+    def mapFromItem(self, item, x, y):
+        if not isinstance(item, QQuickItem):
+            return QPointF(x, y)
+        return item.mapToItem(self._surface, QPointF(x, y))
+
+    # ---- properties -------------------------------------------------------- #
+
+    def _getScreen(self):
+        return self._screen
+
+    def _setScreen(self, value):
+        if value is self._screen:
+            return
+        self._screen = value
+        self.screenChanged.emit()
+
+    def _getImplicitWidth(self):
+        return self._implicitWidth
+
+    def _setImplicitWidth(self, value):
+        value = float(value)
+        if value == self._implicitWidth:
+            return
+        self._implicitWidth = value
+        self.implicitWidthChanged.emit()
+
+    def _getImplicitHeight(self):
+        return self._implicitHeight
+
+    def _setImplicitHeight(self, value):
+        value = float(value)
+        if value == self._implicitHeight:
+            return
+        self._implicitHeight = value
+        self.implicitHeightChanged.emit()
+
+    def _getMask(self):
+        return self._mask
+
+    def _setMask(self, value):
+        if value is self._mask:
+            return
+        self._mask = value
+        self.maskChanged.emit()
+
+    def _backingWindowVisible(self):
+        return self.visibility() != QQuickWindow.Visibility.Hidden
+
+    screen = Property(QObject, _getScreen, _setScreen, notify=screenChanged)
+    implicitWidth = Property(float, _getImplicitWidth, _setImplicitWidth, notify=implicitWidthChanged)
+    implicitHeight = Property(float, _getImplicitHeight, _setImplicitHeight, notify=implicitHeightChanged)
+    mask = Property(QObject, _getMask, _setMask, notify=maskChanged)
+    backingWindowVisible = Property(bool, _backingWindowVisible, notify=backingWindowVisibleChanged)
+
+
+# --------------------------------------------------------------------------- #
+# TransformWatcher
+# --------------------------------------------------------------------------- #
+
+
+@QmlElement
+class TransformWatcher(QObject):
+    """Emits `transformChanged` whenever the geometry of any item between `a`
+    and `b` changes, so a binding that maps between them stays reactive."""
+
+    aChanged = Signal()
+    bChanged = Signal()
+    transformChanged = Signal()
+
+    _SIGNALS = ("xChanged", "yChanged", "widthChanged", "heightChanged", "scaleChanged", "rotationChanged", "parentChanged")
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._a = None
+        self._b = None
+        self._watched = []
+        self._serial = 0
+
+    def _chain(self, item):
+        out = []
+        while isinstance(item, QQuickItem):
+            out.append(item)
+            item = item.parentItem()
+        return out
+
+    def _rewatch(self):
+        for item in self._watched:
+            for name in self._SIGNALS:
+                try:
+                    getattr(item, name).disconnect(self._bump)
+                except (RuntimeError, TypeError):
+                    pass
+        self._watched = []
+        seen = set()
+        for item in self._chain(self._a) + self._chain(self._b):
+            if id(item) in seen:
+                continue
+            seen.add(id(item))
+            for name in self._SIGNALS:
+                getattr(item, name).connect(self._bump)
+            self._watched.append(item)
+        self._bump()
+
+    def _bump(self, *_):
+        self._serial += 1
+        self.transformChanged.emit()
+
+    def _getA(self):
+        return self._a
+
+    def _setA(self, value):
+        self._a = value
+        self.aChanged.emit()
+        self._rewatch()
+
+    def _getB(self):
+        return self._b
+
+    def _setB(self, value):
+        self._b = value
+        self.bChanged.emit()
+        self._rewatch()
+
+    def _transform(self):
+        return self._serial
+
+    a = Property(QObject, _getA, _setA, notify=aChanged)
+    b = Property(QObject, _getB, _setB, notify=bChanged)
+    transform = Property(int, _transform, notify=transformChanged)

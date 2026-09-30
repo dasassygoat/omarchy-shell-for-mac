@@ -10,6 +10,9 @@ def run_shell(argv):
     os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
     os.environ.setdefault("QS_SHELL_DIR", os.path.join(ROOT, "shell"))
     os.environ.setdefault("QS_SHELL_PATH", os.path.join(ROOT, "shell", "shell.qml"))
+    # Plugins reach helper scripts through $OMARCHY_PATH/bin; ours has the
+    # omarchy-shell client, so point it at the project unless already set.
+    os.environ.setdefault("OMARCHY_PATH", ROOT)
 
     from PySide6.QtCore import QUrl
     from PySide6.QtGui import QGuiApplication

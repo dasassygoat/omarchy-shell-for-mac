@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "mac.popupcard-probe",
+  "name": "PopupCard probe",
+  "version": "0.1.0",
+  "author": "omarchy-shell-mac tests",
+  "description": "Bar button that opens an upstream PopupCard; exercises PopupWindow, QsWindow.window and HyprlandFocusGrab",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": { "displayName": "PopupCard probe", "category": "Test", "defaultSection": "right", "allowMultiple": false }
+}

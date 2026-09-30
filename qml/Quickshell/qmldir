@@ -1,0 +1,8 @@
+module Quickshell
+PanelWindow 1.0 PanelWindow.qml
+PanelAnchors 1.0 PanelAnchors.qml
+PanelMargins 1.0 PanelMargins.qml
+PopupWindow 1.0 PopupWindow.qml
+PopupAnchor 1.0 PopupAnchor.qml
+FloatingWindow 1.0 FloatingWindow.qml
+Region 1.0 Region.qml

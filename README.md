@@ -9,16 +9,26 @@ Quickshell only builds on Linux, but the plugins themselves are QtQuick plus a
 thin slice of Quickshell's API. This project provides that slice on macOS, so a
 plugin repo cloned from Omarchy or its marketplace loads as-is.
 
-Proof point: `plugins/omarchy.clock/` is a byte-for-byte copy of Omarchy's
-first-party clock plugin (branch and commit in `upstream/`). It renders in the
-bar, its calendar popup opens, keyboard navigation works, and format changes
-persist to `~/.config/omarchy/shell.json` exactly as on Linux.
+Proof points, all byte-for-byte copies of Omarchy's first-party plugins
+(branch and commit in `upstream/`):
+
+- `plugins/omarchy.clock/` (bar-widget): renders in the bar, its calendar
+  popup opens, keyboard navigation works, format changes persist to
+  `~/.config/omarchy/shell.json` exactly as on Linux.
+- `plugins/omarchy.osd/` (panel): `omarchy-shell osd show '{...}'` draws the
+  on-screen display above the Dock, click-through, and hides on its timer.
+- `plugins/omarchy.reminders/` (overlay): a full-screen scrim with a
+  keyboard-driven card, summoned with `omarchy-shell shell toggle
+  omarchy.reminders`, taking keyboard focus like a layer-shell overlay.
+- `tests/plugins/mac.popupcard-probe/` exercises upstream's `PopupCard`
+  (a `PopupWindow` anchored to a bar button, dismissed on outside click).
 
 ## Layout
 
 | Path | What it is |
 |---|---|
-| `host/quickshell_compat/` | Python (PySide6) implementations of the QML modules plugins import: `Quickshell`, `Quickshell.Io`, `Quickshell.Hyprland` (inert), `Quickshell.Wayland` (inert), plus the host-only `OmarchyMac` |
+| `host/quickshell_compat/` | Python (PySide6) half of the QML modules plugins import: `Quickshell` (singleton, `SystemClock`, `QsWindow`, enums), `Quickshell.Io`, `Quickshell.Hyprland` (inert singleton, working `HyprlandFocusGrab`), `Quickshell.Wayland` (inert), plus the host-only `OmarchyMac` |
+| `qml/Quickshell/` | QML half of the `Quickshell` module: `PanelWindow`, `PopupWindow`, `FloatingWindow`, `Region`. See `qml/PATCHES.md` |
 | `host/ipc.py` | Unix-socket IPC speaking Omarchy's `omarchy-shell` wire protocol |
 | `host/main.py` | Entry point (`run` / `ipc`) |
 | `qml/qs/Commons`, `qml/qs/Ui` | Omarchy's shared QML, vendored. See `qml/PATCHES.md` for the files rebuilt for macOS |
@@ -51,6 +61,10 @@ bin/omarchy-shell shell listPlugins
 bin/omarchy-shell omarchy.clock toggle
 bin/omarchy-shell omarchy.clock cycleFormat
 bin/omarchy-shell shell summon omarchy.clock
+bin/omarchy-shell osd show '{"icon":"volume","message":"50%","value":"50","max":"100","duration":"2000"}'
+bin/omarchy-shell shell toggle omarchy.reminders
+bin/omarchy-shell shell debugWindows
+bin/omarchy-shell shell nativeWindows
 bin/omarchy-shell shell quit
 ```
 
@@ -60,6 +74,9 @@ Environment:
   JetBrainsMono Nerd Font, JetBrains Mono, Menlo that is installed). Omarchy's
   icons are Nerd Font glyphs, so install a Nerd Font for them to render.
 - `OMARCHY_SHELL_MAC_SOCKET` — IPC socket path.
+- `OMARCHY_MAC_CONFIG` — use this file instead of `~/.config/omarchy/shell.json`.
+- `OMARCHY_MAC_PLUGIN_DIRS` — extra third-party plugin roots, colon separated.
+- `OMARCHY_MAC_DEBUG_FOCUS=1` — log window activation decisions.
 
 `config/shell.json` accepts an extra `mac` block (`cornerRadius`, `gapsOut`,
 `font`) for the values Omarchy reads from Hyprland.
