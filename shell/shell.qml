@@ -147,6 +147,9 @@ ShellRoot {
   function applyConfig(cfg, source) {
     shellConfig = cfg
     configSource = source
+    var mac = Util.isPlainObject(cfg.mac) ? cfg.mac : {}
+    macMenuBarForeground = typeof mac.menubarForeground === "string" ? mac.menubarForeground : ""
+    ensureBar(String(mac.bar || "strip"))
     var next = Util.normalizeLayout(cfg.bar ? cfg.bar.layout : null)
     // Only rebuild the bar when the set/order of widgets changed; a settings-
     // only change is pushed into the live widgets instead, the way the
@@ -155,7 +158,7 @@ ShellRoot {
     if (layoutSignature(next) !== layoutSignature(layout)) layout = next
     else bar.applyLayoutSettings(next)
     applyMacStyle(cfg.mac)
-    if (cfg.bar && typeof cfg.bar.position === "string") bar.position = cfg.bar.position
+    if (cfg.bar && typeof cfg.bar.position === "string" && barMode === "strip") bar.position = cfg.bar.position
     syncPanelEntries()
     syncServices()
   }
@@ -620,9 +623,25 @@ ShellRoot {
     if (changed) services = next
   }
 
-  Bar {
-    id: bar
-    shell: shell
+  // The bar host: a strip along the top edge (Bar.qml) or native menu bar
+  // items (MenuBar.qml), chosen by `mac.bar` in shell.json.
+  property var bar: null
+  property string barMode: ""
+  property string macMenuBarForeground: ""
+
+  Component { id: stripBarComponent; Bar {} }
+  Component { id: menuBarComponent; MenuBar {} }
+
+  function ensureBar(mode) {
+    mode = mode === "menubar" ? "menubar" : "strip"
+    if (mode === "menubar" && !MenuBarItems.available) {
+      console.warn("mac.bar = menubar needs pyobjc; falling back to the strip bar")
+      mode = "strip"
+    }
+    if (bar && barMode === mode) return
+    if (bar) bar.destroy()
+    barMode = mode
+    bar = (mode === "menubar" ? menuBarComponent : stripBarComponent).createObject(shell, { shell: shell })
   }
 
   ShellIpc {
@@ -674,9 +693,11 @@ ShellRoot {
         screens.push(sc.name + " " + sc.width + "x" + sc.height + "@" + sc.x + "," + sc.y + " dpr=" + sc.devicePixelRatio)
       }
       return JSON.stringify({
-        bar: { x: bar.x, y: bar.y, width: bar.width, height: bar.height, visible: bar.visible, active: bar.active,
-               screen: bar.screen ? bar.screen.name : null, slots: bar.moduleSlots.length,
-               widgets: bar.moduleWidgets("omarchy.clock").length },
+        barMode: shell.barMode,
+        bar: shell.barMode === "strip"
+          ? { x: bar.x, y: bar.y, width: bar.width, height: bar.height, visible: bar.visible, active: bar.active,
+              screen: bar.screen ? bar.screen.name : null, slots: bar.moduleSlots.length }
+          : { slots: bar.moduleSlots.length, barSize: bar.barSize, dark: MenuBarItems.dark },
         clockOpen: bar.isBarWidgetOpen("omarchy.clock"),
         panelEntries: shell.panelEntries.map(function(e) { return e.pluginId + ":" + e.entryKind + (e.keepLoaded ? ":keep" : "") }),
         instantiated: panelInstantiator.count,
@@ -700,6 +721,7 @@ ShellRoot {
 
   Component.onCompleted: {
     Style.fontFamily = Host.defaultFontFamily
+    ensureBar("strip")
     rescanPlugins()
     loadConfig()
     console.log("omarchy-shell-mac: " + Object.keys(installedPlugins).length + " plugin(s), config from " + configSource)

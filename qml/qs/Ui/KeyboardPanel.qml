@@ -38,6 +38,8 @@ Window {
   default property alias panelContent: contentHolder.children
 
   readonly property var coordinatorKey: owner || root
+  // A menu bar item has no bar centre to speak of; anchor to the item.
+  readonly property bool centerOnBarEffective: centerOnBar && !(bar && bar.menuBar === true)
   readonly property var anchorWindow: anchorItem ? anchorItem.Window.window : null
   readonly property string barPos: bar ? bar.position : "top"
 
@@ -97,10 +99,10 @@ Window {
     var x = 0, y = 0
     var barX = anchorWindow ? anchorWindow.x : screenX
     var barY = anchorWindow ? anchorWindow.y : screenY
-    if (centerOnBar && (barPos === "top" || barPos === "bottom")) {
+    if (centerOnBarEffective && (barPos === "top" || barPos === "bottom")) {
       x = screenX + screenW / 2 - contentWidth / 2
       y = barPos === "bottom" ? barY - contentHeight - gap : barY + barH + gap
-    } else if (centerOnBar) {
+    } else if (centerOnBarEffective) {
       x = barPos === "left" ? barX + barW + gap : barX - contentWidth - gap
       y = screenY + screenH / 2 - contentHeight / 2
     } else if (barPos === "bottom") {
@@ -124,6 +126,10 @@ Window {
   // --- window --------------------------------------------------------------
 
   flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+  // Declared inside the widget's window, this would become its transient
+  // child, and Qt keeps a transient child hidden while its parent window is
+  // hidden. In menu bar mode the widget's window is hidden by design.
+  transientParent: null
   color: "transparent"
   x: cardOrigin.x
   y: cardOrigin.y

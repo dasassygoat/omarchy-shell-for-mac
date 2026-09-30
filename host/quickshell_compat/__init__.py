@@ -7,6 +7,6 @@ through the `QmlElement` decorators, so import this before the QML engine
 loads anything.
 """
 
-from . import core, io, hyprland, wayland, mac  # noqa: F401  (side effects)
+from . import core, io, hyprland, wayland, mac, menubar  # noqa: F401  (side effects)
 
-__all__ = ["core", "io", "hyprland", "wayland", "mac"]
+__all__ = ["core", "io", "hyprland", "wayland", "mac", "menubar"]

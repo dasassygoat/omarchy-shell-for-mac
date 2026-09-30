@@ -53,6 +53,27 @@ macOS menu bar (macOS does not let a window cover the menu bar; set the menu
 bar to auto-hide if you want the bar at the very top). The host has no Dock
 icon.
 
+### Menu bar mode
+
+Set `"mac": { "bar": "menubar" }` in `shell.json` and every bar widget becomes
+its own native macOS menu bar item instead of a strip:
+
+- Each widget keeps running unmodified in a hidden window; the host renders
+  that window into the status item's image a few times a second and forwards
+  clicks (left, right, middle) to the widget's click target under the point.
+- Popups anchor under the menu bar item, using the item's real screen
+  position learned from the click.
+- The widgets read the menu bar's height (`bar.barSize`) and text colour
+  (`bar.foreground`, light or dark to match the menu bar);
+  `mac.menubarForeground` overrides the colour.
+- Ordering follows the layout (left, center, right, read left to right);
+  macOS remembers positions per item, and Command-drag reorders them.
+- No hover: a widget's tooltip text becomes the item's native tooltip.
+
+Launch the host from a normal terminal or LaunchAgent for this mode. A
+process started inside a sandbox (for example an editor's tool runner) gets
+its menu bar items parked off screen by macOS.
+
 ## Managing plugins
 
 Omarchy's own plugin CLI is vendored in `bin/` (patched only for bash 3.2,
@@ -103,8 +124,9 @@ Environment:
 - `OMARCHY_MAC_PLUGIN_DIRS` — extra third-party plugin roots, colon separated.
 - `OMARCHY_MAC_DEBUG_FOCUS=1` — log window activation decisions.
 
-`config/shell.json` accepts an extra `mac` block (`cornerRadius`, `gapsOut`,
-`font`) for the values Omarchy reads from Hyprland.
+`config/shell.json` accepts an extra `mac` block: `bar` (`strip` or
+`menubar`), `menubarForeground`, and `cornerRadius`, `gapsOut`, `font` for the
+values Omarchy reads from Hyprland.
 
 ## What works, what does not
 
