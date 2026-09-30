@@ -8,7 +8,7 @@ Replaced files:
 
 | File | Why |
 |---|---|
-| `qs/Ui/KeyboardPanel.qml` | upstream is a layer-shell surface; the Mac version is a frameless top-level window under the anchor, dismissed when it loses activation |
+| `qs/Ui/KeyboardPanel.qml` | upstream is a layer-shell surface; the Mac version is a frameless top-level window under the anchor, dismissed when it loses activation. It sets `transientParent: null` (Qt keeps a transient child of a hidden window hidden, and in menu bar mode the widget's window is hidden) and ignores `centerOnBar` when the bar is the menu bar |
 
 Everything else in `qs/` is pristine. `qs/Ui/OverlayWindow.qml`,
 `qs/Ui/PopupCard.qml` and `qs/Ui/SpeedTestOverlay.qml` load unchanged on top

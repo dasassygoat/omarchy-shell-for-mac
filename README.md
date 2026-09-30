@@ -32,10 +32,12 @@ Proof points, all byte-for-byte copies of Omarchy's first-party plugins
 | `host/ipc.py` | Unix-socket IPC speaking Omarchy's `omarchy-shell` wire protocol |
 | `host/main.py` | Entry point (`run` / `ipc`) |
 | `qml/qs/Commons`, `qml/qs/Ui` | Omarchy's shared QML, vendored. See `qml/PATCHES.md` for the files rebuilt for macOS |
-| `shell/` | The Mac shell root and bar (the parts of upstream `shell.qml` / `Bar.qml` a plugin can observe) |
+| `shell/` | The Mac shell root and the two bar hosts: `Bar.qml` (strip) and `MenuBar.qml` (native menu bar items), exposing the parts of upstream `shell.qml` / `Bar.qml` a plugin can observe |
 | `plugins/` | Bundled first-party plugins (unmodified upstream copies) |
 | `config/shell.json` | Default layout; `~/.config/omarchy/shell.json` overrides it, same as upstream |
-| `upstream/` | Provenance: Omarchy commit, license, pristine copies of the vendored QML |
+| `upstream/` | Provenance: Omarchy commit, license, pristine copies of the vendored QML and CLI scripts |
+| `bin/` | `omarchy-shell-mac` (host launcher), `omarchy-shell` (IPC client), `omarchy` (dispatcher) and Omarchy's vendored plugin CLI. See `bin/PATCHES.md` |
+| `tests/` | Offscreen smoke test for the window types, a PopupCard test widget, and test configs |
 
 Third-party plugins go in `~/.config/omarchy/plugins/<id>/`, the same path
 Omarchy uses.
@@ -48,10 +50,15 @@ uv pip install --python .venv/bin/python -r requirements.txt
 bin/omarchy-shell-mac
 ```
 
-The bar appears along the top edge of the main display, directly under the
-macOS menu bar (macOS does not let a window cover the menu bar; set the menu
-bar to auto-hide if you want the bar at the very top). The host has no Dock
-icon.
+`bin/omarchy start` does the same. The bar appears along the top edge of the
+main display, directly under the macOS menu bar (macOS does not let a window
+cover the menu bar; set the menu bar to auto-hide if you want the bar at the
+very top). The host has no Dock icon.
+
+The default layout is empty. Put the bundled clock in it with
+`bin/omarchy plugin enable omarchy.clock`, or add plugins as described
+below; the OSD and reminders plugins are loaded on demand without a layout
+entry.
 
 ### Menu bar mode
 
@@ -99,6 +106,13 @@ to `plugins[]`, and re-enables first-party plugins listed in
 `disabledPlugins[]`. `omarchy plugin clone` and the `bar` kind are not
 supported yet.
 
+`add` only takes a repository whose root is the plugin, as upstream does. A
+plugin that lives in a subfolder is installed by symlinking that folder into
+`~/.config/omarchy/plugins/<id>` (or with the installer the plugin ships) and
+then `omarchy plugin enable <id>`; hidden folders such as
+`~/.config/omarchy/plugins/.checkouts/` are ignored by discovery, which makes
+them a good place for the checkout.
+
 Talk to it with the same command Omarchy scripts use:
 
 ```bash
@@ -117,8 +131,10 @@ bin/omarchy-shell shell quit
 Environment:
 
 - `OMARCHY_MAC_FONT` — font family for the bar and panels (default: first of
-  JetBrainsMono Nerd Font, JetBrains Mono, Menlo that is installed). Omarchy's
-  icons are Nerd Font glyphs, so install a Nerd Font for them to render.
+  JetBrainsMono Nerd Font, JetBrains Mono, Menlo that is installed; `mac.font`
+  in `shell.json` overrides both). Omarchy's icons are Nerd Font glyphs, so
+  install one, for example `brew install --cask font-jetbrains-mono-nerd-font`,
+  and restart the host so Qt sees it.
 - `OMARCHY_SHELL_MAC_SOCKET` — IPC socket path.
 - `OMARCHY_MAC_CONFIG` — use this file instead of `~/.config/omarchy/shell.json`.
 - `OMARCHY_MAC_PLUGIN_DIRS` — extra third-party plugin roots, colon separated.
@@ -130,20 +146,34 @@ values Omarchy reads from Hyprland.
 
 ## What works, what does not
 
-Plugin kinds `bar-widget` (with its own `Panel`) and `service` load when the
-plugin sticks to QtQuick, `Quickshell` (`env`, `execDetached`, `screens`,
-`SystemClock`), `Quickshell.Io` (`Process`, `FileView`, `IpcHandler`) and
-`qs.Commons` / `qs.Ui`. That covers the clock, weather, elsewhen, tailscale and
-agents style of widget.
+All plugin kinds are mounted the way upstream mounts them: `bar-widget`
+inside the bar (or the menu bar), `service` as headless singletons at
+startup, `panel` / `overlay` / `menu` through on-demand loaders driven by
+`shell summon`, `hide` and `toggle` (with `keepLoaded` honoured). A plugin
+works when it sticks to QtQuick, `Quickshell` (`env`, `execDetached`,
+`screens`, `SystemClock`, `PanelWindow`, `PopupWindow`, `Region`),
+`Quickshell.Io` (`Process`, `FileView`, `IpcHandler`) and `qs.Commons` /
+`qs.Ui`. Verified with the bundled clock, OSD and reminders plugins and with
+third-party bar widgets (Drop, TaskManager Pro).
+
+macOS differences a plugin can observe:
+
+- No exclusive zones: nothing can reserve screen space.
+- Layer-shell surfaces are placed exactly (menu bar and Dock included); the
+  strip bar itself stays below the menu bar.
+- Outside-click dismissal is "the window lost activation", which is what
+  `HyprlandFocusGrab` reports here.
+- In menu bar mode there is no hover, the bar is 22 px high, and its text
+  colour follows the menu bar.
 
 Not implemented yet:
 
-- `PanelWindow` / `PopupWindow` (so `panel`, `overlay`, `menu`, `bar` kinds and
-  the `OverlayWindow` / `PopupCard` UI helpers)
 - Linux service modules: `Quickshell.Services.*` (Pipewire, UPower, Mpris,
   SystemTray, Notifications, Polkit, Pam), `Quickshell.Bluetooth`,
   `Quickshell.Networking`. These need macOS-backed implementations.
-- Hyprland workspaces / focused window (the `Hyprland` singleton is inert)
+- Hyprland workspaces / focused window (the `Hyprland` singleton is inert),
+  `WlSessionLock`, `ToplevelManager`
+- The `bar` kind (a full bar replacement); `plugin enable` refuses it
 - Multi-monitor bars, vertical bars, hot reload of plugin files
 - `omarchy plugin clone` (needs `rg`, GNU `sed -i` and clone bookkeeping)
 

@@ -1,4 +1,12 @@
-# Manual test setup
+# Tests
+
+Offscreen smoke test for the window types (no display needed):
+
+```bash
+QT_QPA_PLATFORM=offscreen .venv/bin/python tests/smoke_windows.py
+```
+
+## Manual test setup
 
 ```bash
 OMARCHY_MAC_CONFIG=tests/shell.json OMARCHY_MAC_PLUGIN_DIRS=tests/plugins bin/omarchy-shell-mac
