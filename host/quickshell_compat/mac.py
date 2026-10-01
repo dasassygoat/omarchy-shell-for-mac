@@ -222,6 +222,14 @@ class Host(QObject):
             if w.isVisible():
                 w.requestUpdate()
 
+    @Slot(result="QVariantList")
+    def ipcHandlers(self):
+        """Every live Quickshell.Io.IpcHandler, for socket calls that no
+        ShellIpc answered (plain handlers are reachable by `qs ipc` upstream)."""
+        from . import io as qs_io
+
+        return qs_io.live_ipc_handlers()
+
     @Slot(str, result=bool)
     def fileExists(self, path):
         return os.path.isfile(os.path.expanduser(path))

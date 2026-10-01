@@ -711,12 +711,35 @@ ShellRoot {
     }
   }
 
+  // Plain IpcHandlers (not ShellIpc) never register with IpcRegistry, but
+  // `qs ipc call` reaches them on Linux, so the socket does here too, with
+  // the registry's own rules: enabled, exact target, a declared function,
+  // matching argument count.
+  function callPlainIpcHandler(target, method, args) {
+    var handlers = Host.ipcHandlers()
+    for (var i = 0; i < handlers.length; i++) {
+      var handler = handlers[i]
+      if (!handler || !handler.enabled || handler.target !== target) continue
+      if (IpcRegistry.declaredFunctions(handler).indexOf(method) === -1) continue
+      if (handler[method].length !== args.length) continue
+      try {
+        var out = handler[method].apply(handler, args)
+        return { ran: true, output: out === undefined || out === null ? "" : String(out) }
+      } catch (error) {
+        console.warn("ipc " + target + " " + method + " failed: " + error)
+        return { ran: true, output: "" }
+      }
+    }
+    return { ran: false }
+  }
+
   // Socket requests arrive from Python; the registry answers exactly what a
   // `qs ipc call` would.
   Connections {
     target: ipcServer
     function onRequested(requestId, target, method, args) {
       var result = IpcRegistry.call(String(target), String(method), args)
+      if (result.ran !== true) result = shell.callPlainIpcHandler(String(target), String(method), args)
       ipcServer.reply(requestId, result.ran === true, result.ran ? String(result.output || "") : "")
     }
   }

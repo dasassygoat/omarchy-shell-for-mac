@@ -597,6 +597,17 @@ class FileView(QObject):
 # --------------------------------------------------------------------------- #
 
 
+# Every live IpcHandler, so the shell can answer a socket call for a plain
+# `IpcHandler` the way `qs ipc call` would. Omarchy's ShellIpc subclass also
+# registers with qs.Commons.IpcRegistry; third-party plugins often use the
+# bare type.
+_live_handlers = []
+
+
+def live_ipc_handlers():
+    return [h for h in _live_handlers if h is not None]
+
+
 @QmlElement
 class IpcHandler(QObject):
     """A named IPC target. Functions declared on it in QML become callable
@@ -609,6 +620,8 @@ class IpcHandler(QObject):
         super().__init__(parent)
         self._target = ""
         self._enabled = True
+        _live_handlers.append(self)
+        self.destroyed.connect(lambda *_: _live_handlers.remove(self) if self in _live_handlers else None)
 
     def _getTarget(self):
         return self._target

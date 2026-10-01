@@ -31,7 +31,10 @@ QtObject {
   property color menuBarForeground: root.shell && root.shell.macMenuBarForeground !== ""
     ? root.shell.macMenuBarForeground
     : (MenuBarItems.dark ? "#f2f2f2" : "#1c1c1c")
-  property color foreground: menuBarForeground
+  // Upstream semantics: barForeground is the colour on the bar surface
+  // (here, the menu bar), foreground is what panels and popups draw text in,
+  // so it stays the theme's text colour over the theme's popup background.
+  property color foreground: Color.bar.text
   property color barForeground: menuBarForeground
   property color background: "transparent"
   property color urgent: Color.bar.active

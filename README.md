@@ -183,7 +183,11 @@ Not implemented yet:
 - `omarchy plugin clone` (needs `rg`, GNU `sed -i` and clone bookkeeping)
 
 Anything that shells out to `hyprctl`, `pacman`, `wl-copy` and friends fails
-at the command, not in QML.
+at the command, not in QML. Plugin helper scripts usually assume GNU tools
+(`date -d`, `flock`, `timeout`); install them with
+`brew install coreutils findutils gnu-sed grep flock` and the host puts the
+unprefixed GNU names first on the PATH its plugins inherit (your own shell
+is unaffected; `OMARCHY_MAC_NO_GNUBIN=1` disables this).
 
 ## License
 

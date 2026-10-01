@@ -13,6 +13,20 @@ def run_shell(argv):
     # Plugins reach helper scripts through $OMARCHY_PATH/bin; ours has the
     # omarchy-shell client, so point it at the project unless already set.
     os.environ.setdefault("OMARCHY_PATH", ROOT)
+    # Plugin helper scripts are written against GNU coreutils (`date -d`,
+    # `find -printf`, ...). When Homebrew's GNU tools are installed, put their
+    # unprefixed names first on the PATH the plugins' processes inherit, so a
+    # script that works on Omarchy works here. The user's own shell is untouched.
+    gnubins = [
+        "/opt/homebrew/opt/coreutils/libexec/gnubin",
+        "/opt/homebrew/opt/findutils/libexec/gnubin",
+        "/opt/homebrew/opt/gnu-sed/libexec/gnubin",
+        "/opt/homebrew/opt/grep/libexec/gnubin",
+        "/usr/local/opt/coreutils/libexec/gnubin",
+    ]
+    present = [d for d in gnubins if os.path.isdir(d)]
+    if present and os.environ.get("OMARCHY_MAC_NO_GNUBIN") != "1":
+        os.environ["PATH"] = ":".join(present + [os.environ.get("PATH", "")])
 
     from PySide6.QtCore import QUrl
     from PySide6.QtGui import QGuiApplication
