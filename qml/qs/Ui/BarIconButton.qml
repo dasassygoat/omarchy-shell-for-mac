@@ -17,7 +17,8 @@ WidgetButton {
 
   labelVisible: false
   hasVisualContent: text !== "" || iconComponent !== null
-  fontSize: Style.bar.iconFont
+  // omarchy-shell-mac: the menu bar host dictates the icon size.
+  fontSize: bar && bar.iconFontSize !== undefined ? bar.iconFontSize : Style.bar.iconFont
   fixedWidth: vertical ? -1 : slotSize
   fixedHeight: vertical ? slotSize : -1
 

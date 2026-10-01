@@ -7,7 +7,9 @@ Item {
   property var bar: null
   property string text: ""
   property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  property real fontSize: Style.font.body
+  // omarchy-shell-mac: a bar host may dictate the widget font size (the menu
+  // bar host uses the menu bar's own size) and how faint "dimmed" looks.
+  property real fontSize: bar && bar.widgetFontSize !== undefined ? bar.widgetFontSize : Style.font.body
   property color foreground: bar ? bar.barForeground : Color.foreground
   property color activeColor: bar ? bar.urgent : Color.urgent
   property bool active: false
@@ -64,7 +66,7 @@ Item {
   readonly property real labelWidth: label.visible ? label.implicitWidth : 0
 
   visible: hasVisualContent || keepSpace
-  opacity: !hasVisualContent || concealed ? 0 : (dimmed ? 0.45 : 1)
+  opacity: !hasVisualContent || concealed ? 0 : (dimmed ? (bar && bar.dimmedOpacity !== undefined ? bar.dimmedOpacity : 0.45) : 1)
   implicitWidth: fixedWidth > 0 ? fixedWidth : (vertical ? barSize : Math.max(12, label.implicitWidth + scaledHorizontalMargin * 2))
   implicitHeight: fixedHeight > 0 ? fixedHeight : (vertical ? Math.max(12, label.implicitHeight + scaledVerticalPadding * 2) : barSize)
 

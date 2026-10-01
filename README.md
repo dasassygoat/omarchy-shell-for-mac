@@ -73,6 +73,11 @@ its own native macOS menu bar item instead of a strip:
 - The widgets read the menu bar's height (`bar.barSize`) and text colour
   (`bar.foreground`, light or dark to match the menu bar);
   `mac.menubarForeground` overrides the colour.
+- Widget glyphs are drawn at 16 px rather than Omarchy's 12 px body size so
+  they match the size of macOS's own menu bar icons; `mac.menubarFontSize`
+  changes that. A widget that reports itself "dimmed" (signed out, missing
+  CLI) is drawn at 65% rather than 45% opacity, which is too faint on a
+  light menu bar.
 - Ordering follows the layout (left, center, right, read left to right);
   macOS remembers positions per item, and Command-drag reorders them.
 - No hover: a widget's tooltip text becomes the item's native tooltip.
@@ -141,8 +146,8 @@ Environment:
 - `OMARCHY_MAC_DEBUG_FOCUS=1` — log window activation decisions.
 
 `config/shell.json` accepts an extra `mac` block: `bar` (`strip` or
-`menubar`), `menubarForeground`, and `cornerRadius`, `gapsOut`, `font` for the
-values Omarchy reads from Hyprland.
+`menubar`), `menubarForeground`, `menubarFontSize`, and `cornerRadius`,
+`gapsOut`, `font` for the values Omarchy reads from Hyprland.
 
 ## What works, what does not
 

@@ -10,6 +10,14 @@ Replaced files:
 |---|---|
 | `qs/Ui/KeyboardPanel.qml` | upstream is a layer-shell surface; the Mac version is a frameless top-level window under the anchor, dismissed when it loses activation. It sets `transientParent: null` (Qt keeps a transient child of a hidden window hidden, and in menu bar mode the widget's window is hidden) and ignores `centerOnBar` when the bar is the menu bar |
 
+Hooked files (pristine apart from one default each, so a bar host can adjust
+them; the strip bar leaves the upstream values):
+
+| File | Hook |
+|---|---|
+| `qs/Ui/WidgetButton.qml` | `fontSize` defaults to `bar.widgetFontSize` when the host defines it; the dimmed opacity to `bar.dimmedOpacity` |
+| `qs/Ui/BarIconButton.qml` | `fontSize` defaults to `bar.iconFontSize` when the host defines it |
+
 Everything else in `qs/` is pristine. `qs/Ui/OverlayWindow.qml`,
 `qs/Ui/PopupCard.qml` and `qs/Ui/SpeedTestOverlay.qml` load unchanged on top
 of the `PanelWindow` / `PopupWindow` / `Region` implementations in

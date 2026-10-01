@@ -20,6 +20,12 @@ QtObject {
   property string position: "top"
   readonly property bool menuBar: true
   readonly property bool vertical: false
+  // Menu bar text is 13 pt and its icons 16-18 px; Omarchy widgets draw at
+  // the 12 px body size. Hooks WidgetButton / BarIconButton honour.
+  readonly property real widgetFontSize: shell && shell.macMenuBarFontSize > 0 ? shell.macMenuBarFontSize : 16
+  readonly property real iconFontSize: widgetFontSize + 1
+  // 0.45 on dark glyphs over a light menu bar is nearly invisible.
+  readonly property real dimmedOpacity: 0.65
   readonly property int barSize: Math.round(MenuBarItems.thickness())
   property string fontFamily: Style.font.family
   property color menuBarForeground: root.shell && root.shell.macMenuBarForeground !== ""

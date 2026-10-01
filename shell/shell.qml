@@ -149,6 +149,7 @@ ShellRoot {
     configSource = source
     var mac = Util.isPlainObject(cfg.mac) ? cfg.mac : {}
     macMenuBarForeground = typeof mac.menubarForeground === "string" ? mac.menubarForeground : ""
+    macMenuBarFontSize = isFinite(Number(mac.menubarFontSize)) ? Number(mac.menubarFontSize) : 0
     ensureBar(String(mac.bar || "strip"))
     var next = Util.normalizeLayout(cfg.bar ? cfg.bar.layout : null)
     // Only rebuild the bar when the set/order of widgets changed; a settings-
@@ -628,6 +629,7 @@ ShellRoot {
   property var bar: null
   property string barMode: ""
   property string macMenuBarForeground: ""
+  property real macMenuBarFontSize: 0
 
   Component { id: stripBarComponent; Bar {} }
   Component { id: menuBarComponent; MenuBar {} }
