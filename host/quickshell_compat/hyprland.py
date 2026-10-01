@@ -10,7 +10,7 @@ to a window that is not in `windows`.
 import shiboken6
 from PySide6.QtCore import Property, QObject, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QmlElement, QmlSingleton
+from PySide6.QtQml import QJSValue, QmlElement, QmlSingleton
 
 QML_IMPORT_NAME = "Quickshell.Hyprland"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -106,6 +106,8 @@ class HyprlandFocusGrab(QObject):
         return list(self._windows)
 
     def _setWindows(self, value):
+        if isinstance(value, QJSValue):
+            value = value.toVariant()
         self._windows = list(value or [])
         self.windowsChanged.emit()
 

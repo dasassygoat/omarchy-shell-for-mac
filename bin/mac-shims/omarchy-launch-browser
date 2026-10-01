@@ -1,0 +1,3 @@
+#!/bin/bash
+# Omarchy opens URLs in the default browser; on macOS that is `open`.
+exec open "$@"

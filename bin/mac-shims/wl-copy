@@ -1,0 +1,11 @@
+#!/bin/bash
+# wl-copy stand-in: copy stdin (or arguments) to the macOS clipboard.
+args=()
+while (( $# > 0 )); do
+  case "$1" in
+    -n|--trim-newline|-o|--paste-once|-f|--foreground|-c|--clear|-p|--primary) shift ;;
+    -t|--type|-s|--seat) shift 2 ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+if (( ${#args[@]} > 0 )); then printf '%s' "${args[*]}" | pbcopy; else pbcopy; fi

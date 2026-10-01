@@ -1,0 +1,3 @@
+#!/bin/bash
+# wl-paste stand-in: print the macOS clipboard.
+pbpaste

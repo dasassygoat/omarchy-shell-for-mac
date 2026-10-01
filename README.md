@@ -182,8 +182,12 @@ Not implemented yet:
 - Multi-monitor bars, vertical bars, hot reload of plugin files
 - `omarchy plugin clone` (needs `rg`, GNU `sed -i` and clone bookkeeping)
 
-Anything that shells out to `hyprctl`, `pacman`, `wl-copy` and friends fails
-at the command, not in QML. Plugin helper scripts usually assume GNU tools
+Anything that shells out to `hyprctl` or `pacman` fails at the command, not
+in QML. The desktop commands plugins commonly call do have macOS stand-ins
+in `bin/mac-shims/` (`notify-send` → a user notification, `wl-copy` /
+`wl-paste` → the clipboard, `xdg-open` and `omarchy-launch-browser` →
+`open`), on the PATH of plugin processes after any real install. Plugin
+helper scripts usually assume GNU tools
 (`date -d`, `flock`, `timeout`); install them with
 `brew install coreutils findutils gnu-sed grep flock` and the host puts the
 unprefixed GNU names first on the PATH its plugins inherit (your own shell

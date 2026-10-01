@@ -1,0 +1,13 @@
+#!/bin/bash
+# notify-send stand-in: macOS user notification via osascript.
+# Accepts the common flags (-a app, -u urgency, -i icon, -t ms, -r id) and ignores them.
+summary=""; body=""
+while (( $# > 0 )); do
+  case "$1" in
+    -a|--app-name|-u|--urgency|-i|--icon|-t|--expire-time|-r|--replace-id|-c|--category|-h|--hint) shift 2 ;;
+    -*) shift ;;
+    *) if [[ -z $summary ]]; then summary="$1"; else body="${body:+$body }$1"; fi; shift ;;
+  esac
+done
+esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+osascript -e "display notification \"$(esc "$body")\" with title \"$(esc "$summary")\"" >/dev/null 2>&1 || true

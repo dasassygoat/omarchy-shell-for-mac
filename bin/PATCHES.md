@@ -14,8 +14,10 @@ first on `PATH` and defaults `OMARCHY_PATH` to the checkout, plus:
 | `omarchy-plugin-catalog` | scans `$OMARCHY_PATH/plugins` (flat) instead of `shell/plugins`; honours `OMARCHY_MAC_PLUGIN_DIRS` |
 
 Mac-only additions: `omarchy` (dispatcher for `omarchy plugin …` / `omarchy
-shell …`), `omarchy-gum` (gum stand-in), `omarchy-shell` (IPC client) and
-`omarchy-shell-mac` (host launcher).
+shell …`), `omarchy-gum` (gum stand-in), `omarchy-shell` (IPC client),
+`omarchy-shell-mac` (host launcher), and `mac-shims/` (stand-ins for
+`notify-send`, `wl-copy`, `wl-paste`, `xdg-open`, `omarchy-launch-browser`
+that the host appends to the PATH of plugin processes).
 
 Not vendored: `omarchy-plugin-clone` (needs `rg` and GNU `sed -i`; the clone
 bookkeeping in shell.json is also not implemented on the host).

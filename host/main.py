@@ -27,6 +27,10 @@ def run_shell(argv):
     present = [d for d in gnubins if os.path.isdir(d)]
     if present and os.environ.get("OMARCHY_MAC_NO_GNUBIN") != "1":
         os.environ["PATH"] = ":".join(present + [os.environ.get("PATH", "")])
+    # Stand-ins for Linux desktop commands plugins call (notify-send, wl-copy,
+    # xdg-open, omarchy-launch-browser), plus the project's bin for
+    # omarchy-shell. Appended, so a real install of any of them wins.
+    os.environ["PATH"] = ":".join([os.environ.get("PATH", ""), os.path.join(ROOT, "bin"), os.path.join(ROOT, "bin", "mac-shims")])
 
     from PySide6.QtCore import QUrl
     from PySide6.QtGui import QGuiApplication

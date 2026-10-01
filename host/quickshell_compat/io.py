@@ -21,9 +21,17 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
-from PySide6.QtQml import QmlElement, QmlUncreatable
+from PySide6.QtQml import QJSValue, QmlElement, QmlUncreatable
 
 QML_IMPORT_NAME = "Quickshell.Io"
+
+
+def _plain(value):
+    """Arrays and objects built at runtime in JS (concat, map, literals in
+    functions) reach Python as QJSValue rather than list/dict; unwrap them."""
+    if isinstance(value, QJSValue):
+        return value.toVariant()
+    return value
 QML_IMPORT_MAJOR_VERSION = 1
 
 
@@ -273,6 +281,7 @@ class Process(QObject):
         return list(self._command)
 
     def _setCommand(self, value):
+        value = _plain(value)
         self._command = list(value or [])
         self.commandChanged.emit()
 
@@ -287,6 +296,7 @@ class Process(QObject):
         return dict(self._env)
 
     def _setEnv(self, value):
+        value = _plain(value)
         self._env = dict(value or {})
         self.environmentChanged.emit()
 
@@ -315,8 +325,15 @@ class Process(QObject):
         return self._stdinEnabled
 
     def _setStdinEnabled(self, value):
-        self._stdinEnabled = bool(value)
-        self.stdinEnabledChanged.emit()
+        value = bool(value)
+        changed = value != self._stdinEnabled
+        self._stdinEnabled = value
+        # Quickshell semantics: turning stdin off on a running process closes
+        # its stdin, which is how plugins signal end-of-input after write().
+        if not value and self._isRunning():
+            self._proc.closeWriteChannel()
+        if changed:
+            self.stdinEnabledChanged.emit()
 
     def _getManageLifetime(self):
         return self._manageLifetime

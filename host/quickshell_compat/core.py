@@ -23,7 +23,7 @@ from PySide6.QtCore import (
     Slot,
 )
 from PySide6.QtGui import QGuiApplication, QWindow
-from PySide6.QtQml import ListProperty, QmlElement, QmlSingleton, QQmlComponent, QQmlEngine
+from PySide6.QtQml import ListProperty, QJSValue, QmlElement, QmlSingleton, QQmlComponent, QQmlEngine
 
 QML_IMPORT_NAME = "Quickshell"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -102,6 +102,8 @@ class Variants(QObject):
         return self._model
 
     def _setModel(self, value):
+        if isinstance(value, QJSValue):
+            value = value.toVariant()
         self._model = list(value) if isinstance(value, (list, tuple)) else ([] if value is None else [value])
         self.modelChanged.emit()
         self._rebuild()
@@ -213,6 +215,8 @@ class Quickshell(QObject):
 
     @Slot("QVariant")
     def execDetached(self, command):
+        if isinstance(command, QJSValue):
+            command = command.toVariant()
         cwd = ""
         argv = command
         if isinstance(command, dict):
