@@ -20,8 +20,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
-
-This project vendors code from Omarchy (https://github.com/omacom/omarchy),
-also MIT licensed; its license and the pristine copies of the vendored files
-are in upstream/.
