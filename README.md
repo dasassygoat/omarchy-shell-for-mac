@@ -184,3 +184,8 @@ Not implemented yet:
 
 Anything that shells out to `hyprctl`, `pacman`, `wl-copy` and friends fails
 at the command, not in QML.
+
+## License
+
+MIT, see `LICENSE`. The vendored Omarchy code in `qml/qs/`, `plugins/` and
+`bin/` is also MIT; Omarchy's license is kept in `upstream/`.
